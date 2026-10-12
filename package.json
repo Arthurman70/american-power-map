@@ -1,0 +1,14 @@
+{
+  "name": "american-power-map",
+  "version": "1.0.0",
+  "description": "Who decides, who controls whom: a 3D map and 2D chain explorer of US power, built from SEC, FEC, USAspending and IRS public data",
+  "license": "MIT",
+  "private": true,
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "start": "node server/server.mjs",
+    "build:db": "node pipeline/build_db.mjs data/powermap.db && node server/precompute.mjs data/powermap.db",
+    "build:web": "node pipeline/build_web.mjs",
+    "check": "node pipeline/check_findings.mjs data/powermap.db"
+  }
+}

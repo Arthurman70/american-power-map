@@ -1,0 +1,11 @@
+services:
+  power-map:
+    build: .
+    container_name: power-map
+    restart: unless-stopped
+    ports:
+      - "8092:8092"
+    volumes:
+      - ./data:/data
+    env_file:
+      - .env

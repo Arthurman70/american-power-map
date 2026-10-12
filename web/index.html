@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>American Power Map — database edition</title>
+<style>
+:root{
+  --bg:#10151d; --bg2:#151c26; --panel:rgba(19,25,34,.92); --line:#28323f; --line2:#37435a;
+  --text:#e8ecf3; --muted:#8f9ab0; --faint:#5e6a80;
+  --red:#e0453b; --yellow:#f2c230; --blue:#3d8bff; --purple:#a14be8; --green:#3fbf6a; --orange:#ff8a3d;
+  --sans:"Avenir Next","Avenir","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.45;overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;background:var(--bg2);border:1px solid var(--line2);border-radius:6px;padding:5px 10px}
+button:hover{border-color:#5a6a88;background:#1c2530}
+button:focus-visible,input:focus-visible,select:focus-visible,.row:focus-visible,.chip:focus-visible{outline:2px solid #9bb3ff;outline-offset:1px}
+button.on{background:#25304a;border-color:#6c82c2}
+select{background:var(--bg2);border:1px solid var(--line2);border-radius:6px;padding:5px 8px}
+input[type=text],input[type=search]{background:var(--bg2);border:1px solid var(--line2);border-radius:6px;padding:6px 9px;width:100%}
+input[type=range]{width:100%;accent-color:#9bb3ff}
+a{color:#9bb3ff}
+#app{position:relative;width:100vw;height:100vh}
+canvas#c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+
+/* top bar */
+#top{position:absolute;top:0;left:0;right:0;height:54px;display:flex;align-items:center;gap:14px;padding:0 14px;background:linear-gradient(180deg,rgba(16,21,29,.96),rgba(16,21,29,.6) 80%,transparent);z-index:5;pointer-events:none}
+#top>*{pointer-events:auto}
+#title{display:flex;flex-direction:column;line-height:1.15;min-width:190px}
+#title b{font-size:19px;font-weight:600;letter-spacing:-.01em}
+#title span{font-size:13px;color:var(--muted)}
+#layouts{display:flex;gap:4px;background:rgba(19,25,34,.7);padding:4px;border-radius:8px;border:1px solid var(--line)}
+#layouts button{border:none;background:transparent;padding:4px 9px;border-radius:5px;color:var(--muted)}
+#layouts button.on{background:#25304a;color:var(--text)}
+#layouts button:hover{color:var(--text)}
+#radialMetric,#depthDir{display:none}
+#radialMetric.show,#depthDir.show{display:inline-block}
+#topsearch{flex:1;max-width:340px}
+#topright{margin-left:auto;display:flex;gap:6px}
+
+/* side panels */
+.panel{position:absolute;top:58px;bottom:62px;width:340px;background:var(--panel);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;z-index:4;transition:transform .25s ease,opacity .25s ease}
+#left{left:10px}
+#right{right:10px;width:400px}
+.panel.hidden{opacity:0;pointer-events:none}
+#left.hidden{transform:translateX(-30px)}
+#right.hidden{transform:translateX(30px)}
+.panel h2{font-size:14px;font-weight:600;margin:0;padding:10px 12px 6px;color:var(--muted);letter-spacing:.01em}
+.panel .body{overflow:auto;flex:1;padding:0 12px 12px;scrollbar-width:thin;scrollbar-color:#37435a transparent}
+.sec{margin:8px 0 10px}
+.sec label.t{display:block;color:var(--muted);font-size:13px;margin-bottom:5px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{border:1px solid var(--line2);border-radius:14px;padding:3px 10px;font-size:13px;background:transparent;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.chip.on{color:var(--text);background:#1f2a3c;border-color:#4c5d80}
+.chip i{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--c,#888)}
+.chip.line i{width:14px;height:3px;border-radius:2px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.range .v{float:right;color:var(--text)}
+.list{margin-top:4px}
+.grp{color:var(--muted);font-size:12.5px;margin:8px 0 3px;padding-top:6px;border-top:1px solid var(--line)}
+.row{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:6px;cursor:pointer}
+.row:hover{background:#1c2432}
+.row.sel{background:#25304a}
+.row i{flex:none;width:9px;height:9px;border-radius:50%;background:var(--c)}
+.row .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .st{color:var(--faint);font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.row .st b{color:var(--muted);font-weight:500}
+.count{color:var(--faint);font-size:12.5px;padding:2px 6px}
+
+/* detail */
+#detail .hd{padding:12px 12px 8px;border-bottom:1px solid var(--line)}
+#detail .cat{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+#detail .cat i{width:9px;height:9px;border-radius:50%;background:var(--c)}
+#detail h1{font-size:19px;font-weight:600;margin:4px 0 2px;line-height:1.25;letter-spacing:-.01em}
+#detail .dm{color:#c9d2e3;font-size:14px;margin:2px 0}
+#detail .meta{color:var(--muted);font-size:13px}
+#detail p{margin:8px 0;color:#c9d2e3}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0}
+.stat{background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:6px 8px}
+.stat b{display:block;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+.stat span{color:var(--muted);font-size:12px}
+.acts{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 10px}
+.acts button{padding:4px 9px;font-size:13.5px}
+.chain{font-size:13.5px;color:#c9d2e3;margin:6px 0 10px;line-height:1.7}
+.chain a{color:#dbe3f5;text-decoration:none;border-bottom:1px dotted #5a6a88;cursor:pointer}
+.chain em{color:var(--faint);font-style:normal;margin:0 4px}
+.edges h3{font-size:13.5px;font-weight:600;margin:12px 0 4px;color:var(--muted)}
+.edge{display:grid;grid-template-columns:22px 1fr;gap:8px;padding:4px 4px;border-radius:6px;cursor:pointer;align-items:start}
+.edge:hover{background:#1c2432}
+.edge .bar{height:4px;margin-top:8px;border-radius:2px;background:var(--c)}
+.edge .who{font-size:14px}
+.edge .who i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--nc);margin-right:5px;vertical-align:0}
+.edge .how{color:var(--muted);font-size:13px}
+.edge .how b{color:var(--c);font-weight:500;margin-right:4px}
+#empty{padding:14px 12px;color:var(--muted)}
+#empty p{margin:0 0 10px}
+kbd{background:var(--bg2);border:1px solid var(--line2);border-radius:4px;padding:0 5px;font-family:inherit;font-size:11px}
+
+/* path */
+#pathbox{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:6px 0 10px;background:rgba(21,28,38,.8)}
+#pathbox .h{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--muted);margin-bottom:6px}
+#pathbox .h b{color:var(--text);font-weight:600}
+#pathbox .steps{font-size:14px;line-height:1.7}
+#pathbox .steps em{color:var(--faint);font-style:normal;margin:0 5px}
+#pathbox .steps a{color:#dbe3f5;text-decoration:none;border-bottom:1px dotted #5a6a88;cursor:pointer}
+#pathbox .none{color:var(--muted);font-size:13.5px}
+
+/* legend */
+#legend{position:absolute;left:0;right:0;bottom:0;height:62px;display:flex;align-items:center;gap:18px;padding:0 14px;background:linear-gradient(0deg,rgba(16,21,29,.97),rgba(16,21,29,.7) 80%,transparent);z-index:5;overflow-x:auto;white-space:nowrap}
+#legend .k{color:var(--faint);font-size:12.5px;margin-right:2px}
+#legend .chips{flex-wrap:nowrap}
+#legend .arrows{display:flex;gap:10px;align-items:center}
+.arr{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--muted)}
+.arr svg{width:34px;height:12px}
+#note{margin-left:auto;color:var(--faint);font-size:12px;white-space:nowrap}
+
+/* tooltip */
+#tip{position:absolute;z-index:6;pointer-events:none;background:rgba(19,25,34,.95);border:1px solid var(--line2);border-radius:7px;padding:7px 10px;max-width:320px;display:none;font-size:14px;box-shadow:0 6px 24px rgba(0,0,0,.4)}
+#tip b{display:block;font-weight:600;font-size:15px}
+#tip span{color:var(--muted);display:block}
+#tip i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c);margin-right:5px}
+
+#loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:10;color:var(--muted);flex-direction:column;gap:8px}
+#loading b{color:var(--text);font-size:16px;font-weight:600}
+
+@media (max-width:900px){
+  .panel{width:min(312px,88vw)}
+  #right{width:min(352px,88vw)}
+  #title span{display:none}
+  #topsearch{max-width:160px}
+  #note{display:none}
+}
+@media (prefers-reduced-motion:reduce){ .panel{transition:none} }
+
+.indlink{color:var(--muted);text-decoration:underline dotted;cursor:pointer}
+.indlink:hover{color:var(--text)}
+.status{color:var(--faint);font-size:12.5px;margin-top:6px;line-height:1.4;min-height:14px}
+.chip.on.hot{border-color:#ff5fc9;color:#ffd0ef}
+#help{position:absolute;inset:0;z-index:20;background:rgba(8,11,16,.72);display:none;align-items:center;justify-content:center}
+#help.show{display:flex}
+#help .card{background:var(--panel);border:1px solid var(--line2);border-radius:12px;max-width:760px;width:calc(100% - 40px);max-height:calc(100% - 60px);overflow:auto;padding:18px 22px;font-size:14px;line-height:1.5}
+#help h2{margin:0 0 8px;font-size:18px}
+#help h3{margin:16px 0 4px;font-size:14.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+#help table{width:100%;border-collapse:collapse;font-size:13.5px}
+#help td{padding:5px 6px;border-top:1px solid var(--line);vertical-align:top}
+#help td:first-child{white-space:nowrap;color:var(--text);font-weight:600}
+#help a{color:#9bb3ff}
+#help .x{float:right;cursor:pointer;color:var(--muted);font-size:20px;line-height:1}
+label.filebtn{display:inline-block}
+label.filebtn input{display:none}
+</style>
+<style>
+#layStatus{white-space:nowrap}
+#loading span{display:block;margin-top:6px}
+/* The list is now virtualized (server/… no — web/app.js renders only the rows scrolled into view) so it can
+   hold thousands of centers smoothly; give it its own fixed-height scroll pane instead of scrolling with the
+   rest of the filter UI, so the filters above stay put while the list itself scrolls. */
+#left .body{display:flex;flex-direction:column;overflow:hidden}
+#left .body>.sec,#left .body>.count{flex:none}
+#left .body>#list{flex:1 1 auto;overflow-y:auto;min-height:180px;scrollbar-width:thin;scrollbar-color:#37435a transparent;margin-top:4px}
+#list .row,#list .grp{box-sizing:border-box;display:flex;align-items:center;height:100%;margin:0;border-top:none;padding:0 6px}
+</style>
+<link rel="stylesheet" href="/chains.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="c" aria-label="3D map of U.S. power centers"></canvas>
+
+  <div id="top">
+    <div id="title"><b>American Power Map</b><span>Loading the database…</span></div>
+    <div id="layouts" role="group" aria-label="Layout">
+      <button data-l="cat" class="on" title="Cluster by how power is exercised">Power type</button>
+      <button data-l="sector" title="Cluster by sector">Sector</button>
+      <button data-l="branch" title="Cluster by branch or seat of authority">Branch</button>
+      <button data-l="hier" title="Top-down control hierarchy">Hierarchy</button>
+      <button data-l="radial" title="Most powerful at the center">Radial</button>
+      <button data-l="depth" title="Rings of distance from the selected center">Distance</button>
+    </div>
+    <select id="radialMetric" aria-label="Radial metric">
+      <option value="p">by power score</option>
+      <option value="outW">by control over others</option>
+      <option value="inW">by exposure to control</option>
+      <option value="net">by net control</option>
+      <option value="deg">by number of links</option>
+    </select>
+    <select id="depthDir" aria-label="Distance direction">
+      <option value="any">any direction</option>
+      <option value="down">following arrows out</option>
+      <option value="up">following arrows in</option>
+    </select>
+    <input id="topsearch" type="search" placeholder="Search a center, person, agency…" aria-label="Search">
+    <div id="topright">
+      <button id="chainsBtn" title="Follow chains of money and control in a 2D diagram: ranked findings, discovery, builder and saved chains">Power chains</button>
+      <button id="tLeft" class="on" title="Toggle explore panel">Explore</button>
+      <button id="tRight" class="on" title="Toggle detail panel">Detail</button>
+      <button id="resetView" title="Reset camera">Reset view</button>
+    </div>
+  </div>
+
+  <aside id="left" class="panel" aria-label="Explore">
+    <h2>Explore</h2>
+    <div class="body">
+      <div class="sec grid2">
+        <div><label class="t" for="sortSel">Sort by</label>
+          <select id="sortSel" style="width:100%">
+            <option value="p">Power score</option>
+            <option value="outW">Control over others</option>
+            <option value="inW">Exposure to control</option>
+            <option value="net">Net control</option>
+            <option value="deg">Number of links</option>
+            <option value="name">Name</option>
+          </select></div>
+        <div><label class="t" for="groupSel">Group by</label>
+          <select id="groupSel" style="width:100%">
+            <option value="">Nothing</option>
+            <option value="c">Power type</option>
+            <option value="s">Sector</option>
+            <option value="b">Branch</option>
+            <option value="t">Tier</option>
+          </select></div>
+      </div>
+      <div class="sec"><label class="t">Sector</label><div class="chips" id="sectorChips"></div></div>
+      <div class="sec"><label class="t">Branch / seat of authority</label><div class="chips" id="branchChips"></div></div>
+      <div class="sec"><label class="t" for="indSel">Industry</label>
+        <select id="indSel" style="width:100%"></select>
+        <div class="chips" style="margin-top:6px">
+          <button class="chip" id="hlHighlight" title="Brighten this industry, dim everything else">Highlight</button>
+          <button class="chip" id="hlIsolate" title="Show only this industry">Isolate</button>
+          <button class="chip" id="hlClear">Clear</button>
+          <button class="chip hot" id="darkBtn" title="Keep only dark-money arrows and the centers they touch"><i style="--c:#ff5fc9"></i>Dark money only</button>
+        </div>
+        <div class="status" id="hlStatus"></div><div class="status" id="darkStatus"></div>
+      </div>
+      <div class="sec"><label class="t">Arrow types</label><div class="chips"><button class="chip" id="arrowsBtn" title="Show or hide every connection line at once, regardless of the type filters below">Arrows</button><button class="chip" id="bundlesBtn" title="Hubs with many same-type routine connections (SEC registrants, IRS-regulated nonprofits...) are drawn as one soft membrane instead of a hairball of lines. Turn off to see every individual line at once.">Bundles</button></div><div class="chips" id="etypeChips"></div></div>
+      <div class="sec grid2">
+        <div class="range"><label class="t" title="Arrows of strength 3+ are loaded for the whole map; weaker arrows load when you select a center">Min arrow strength <span class="v" id="minWv">4</span></label><input type="range" id="minW" min="1" max="5" value="4"></div>
+        <div class="range"><label class="t">Label from power <span class="v" id="labelMinv">7</span></label><input type="range" id="labelMin" min="0" max="10" value="7"></div>
+      </div>
+      <div class="sec"><div class="range"><label class="t" title="Globs are sized by funding — company revenue, 13F holdings, or a government agency's budget ×10. This slider hides everything below a size, to declutter the map.">Min size <span class="v" id="minSizev">off</span></label><input type="range" id="minSize" min="0" max="13" step="0.25" value="0"></div></div>
+      <div class="sec chips">
+        <button class="chip" id="focusBtn" title="Dim everything not linked to the selected center"><i style="--c:#9bb3ff"></i>Focus on selection</button>
+        <button class="chip" id="dlJson" title="Download the data as JSON">Download JSON</button>
+        <button class="chip" id="dlCsv" title="Download edges as CSV">Download CSV</button>
+      </div>
+      <div class="sec chips" id="hiddenRow"><span class="status" id="hiddenStatus"></span><button class="chip" id="showHiddenBtn" hidden title="Bring back every center you've hidden">Show all hidden</button></div>
+      <div class="sec"><label class="t">Add data</label>
+        <div class="chips">
+          <label class="chip filebtn" title="Nodes/edges CSV, this app's JSON, FEC Schedule A/B export, USAspending CSV, Senate LDA CSV, LittleSis JSON"><input type="file" id="fileIn" accept=".csv,.json,.txt" multiple>Import file</label>
+          <button class="chip" id="pasteBtn" title="Import CSV/JSON from the clipboard">Paste</button>
+          <button class="chip" id="tplBtn" title="Download the CSV template">Template</button>
+          <button class="chip" id="srcBtn" title="Where to get data">Data sources</button>
+        </div>
+        <label class="t" style="margin-top:8px">Fetch for the selected center</label>
+        <div class="chips" id="fetchBox">
+          <button class="chip" data-src="fec" title="Top contributions to or from this name (FEC API, 2024–26)">FEC money</button>
+          <button class="chip" data-src="usa" title="Federal awards to this recipient by agency (USAspending)">Federal awards</button>
+          <button class="chip" data-src="lda" title="Lobbying filings naming this client (Senate LDA)">Lobbying</button>
+          <button class="chip" data-src="ls" title="Relationships from LittleSis power-mapping database">LittleSis</button>
+        </div>
+        <div class="status" id="dataStatus">Imports are stored in the shared database (admin token required) and tagged with their source.</div>
+      </div>
+      <div class="count" id="listCount"></div>
+      <div class="list" id="list"></div>
+    </div>
+  </aside>
+
+  <aside id="right" class="panel" aria-label="Detail">
+    <div id="detail" class="body" style="padding:0">
+      <div id="empty">
+        <p><b>Click any blob</b> to see who controls it, what it controls, and its chain of command.</p>
+        <p>Drag to orbit · scroll to zoom · right-drag or <kbd>shift</kbd>+drag to pan · double-click to fly to a center · <kbd>esc</kbd> clears.</p>
+        <p>Arrow thickness is the strength of control or influence in that direction. Two arrows between the same pair show a two-way relationship; the thicker one has the upper hand.</p>
+        <p>Use <b>Path from / Path to</b> on any two centers to trace the shortest chain of control between them.</p>
+      </div>
+    </div>
+  </aside>
+
+  <div id="legend">
+    <span class="k">Exercises power through</span>
+    <div class="chips" id="catChips"></div>
+    <span class="k" style="margin-left:6px">Arrows</span>
+    <div class="arrows" id="arrowLegend"></div>
+    <span id="note">Officeholders per public reporting, Sept 2026 — verify before citing; edit DATA in the file to update. Power scores are editorial.</span>
+  </div>
+
+  <div id="tip"></div>
+  
+  <div id="help"><div class="card"><span class="x" id="helpClose">×</span><h2>Where the data comes from, and how to add more</h2>
+  <p>The built-in map is hand-curated. To grow it toward every registered business, pull from the public registries below and drop their exports on <b>Import file</b>; names are matched to existing centers, new ones are created and tagged with their source.</p>
+  <h3>Money in politics</h3>
+  <table>
+  <tr><td>FEC API &amp; bulk data</td><td><a href="https://api.open.fec.gov/developers/" target="_blank">api.open.fec.gov</a> — every contribution, committee and independent expenditure. Export Schedule A/B CSVs from fec.gov and import directly. The <b>FEC money</b> button queries it live (DEMO_KEY, rate-limited).</td></tr>
+  <tr><td>OpenSecrets</td><td><a href="https://www.opensecrets.org/open-data/bulk-data" target="_blank">Bulk data</a> (educational license; tables for candidates, committees, PAC-to-PAC, individual contributions, lobbying by industry) and a <a href="https://www.opensecrets.org/open-data/api" target="_blank">JSON API</a> (200 calls/day). Their industry codes are the basis for this map's industry tags. Dark-money figures here follow their 2024 analysis.</td></tr>
+  <tr><td>Senate LDA</td><td><a href="https://lda.senate.gov/api/" target="_blank">lda.senate.gov/api</a> — quarterly lobbying filings: client, registrant, issues, agencies contacted. The <b>Lobbying</b> button queries it live.</td></tr>
+  <tr><td>Brennan Center / AdImpact</td><td>Dark-money and ad-spend totals not visible in FEC filings.</td></tr>
+  <tr><td>FollowTheMoney (state)</td><td><a href="https://www.followthemoney.org" target="_blank">followthemoney.org</a> — state-level contributions for governors, legislators, AGs and judges.</td></tr>
+  </table>
+  <h3>Companies and contracts</h3>
+  <table>
+  <tr><td>SEC EDGAR</td><td><a href="https://www.sec.gov/search-filings/edgar-application-programming-interfaces" target="_blank">EDGAR APIs</a> — every public company (CIK list, 10-K, ownership 13F/13D). Best route to "every listed company": import <code>company_tickers.json</code> converted to a nodes CSV with industry from SIC code.</td></tr>
+  <tr><td>USAspending</td><td><a href="https://api.usaspending.gov" target="_blank">api.usaspending.gov</a> — federal contracts and grants by recipient and agency. <b>Federal awards</b> button queries it live; award-search CSV exports import directly.</td></tr>
+  <tr><td>IRS 990 / ProPublica Nonprofit Explorer</td><td><a href="https://projects.propublica.org/nonprofits/api" target="_blank">Nonprofit Explorer API</a> — revenue, officers and grants of 1.8M nonprofits, including 501(c)(4) dark-money groups' Schedule I grant lists.</td></tr>
+  <tr><td>Census County Business Patterns / BLS QCEW</td><td>Counts and payroll of establishments by industry and county — the denominator for "every business in America" (~33M firms, 8M with employees).</td></tr>
+  <tr><td>State corporate registries / OpenCorporates</td><td><a href="https://opencorporates.com" target="_blank">opencorporates.com</a> — 200M+ company records with officers (API paid); Delaware and state SOS databases for LLC ownership.</td></tr>
+  <tr><td>GLEIF LEI</td><td><a href="https://www.gleif.org" target="_blank">gleif.org</a> — legal-entity identifiers with parent/child ownership relationships for financial firms.</td></tr>
+  </table>
+  <h3>Relationships</h3>
+  <table>
+  <tr><td>LittleSis</td><td><a href="https://littlesis.org/api" target="_blank">littlesis.org/api</a> — the power-mapping database (boards, donations, positions, family, ownership) for 400k+ entities. The <b>LittleSis</b> button queries it live; JSON or CSV exports import directly.</td></tr>
+  <tr><td>Wikidata</td><td>SPARQL for officers, owners, subsidiaries and board members of companies and institutions.</td></tr>
+  <tr><td>Federal Register / Regulations.gov</td><td>Which companies comment on which rules — regulator↔company edges.</td></tr>
+  <tr><td>13F / 13D filings</td><td>Institutional ownership — the "who owns whom" layer (BlackRock, Vanguard, State Street edges) for every listed firm.</td></tr>
+  </table>
+  <p style="color:var(--muted);font-size:13px">Live fetches run from your browser; some sites block cross-origin requests, in which case the CSV import path always works. This is the database-backed build: centers and arrows live in SQLite behind an API, layouts are Barnes-Hut and precomputed, and imports go to the shared database (admin token required).</p>
+  </div></div>
+  <div id="loading"><b>American Power Map</b><span>Loading…</span></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/layout.js"></script>
+<script src="/app.js"></script>
+<script src="/chains.js"></script>
+<script src="/importers.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# raw bulk downloads (re-fetch with the pipeline; see README)
+data/13f/
+data/fec/
+data/irs/
+data/*.zip
+# built databases: grab powermap.db from the GitHub release, or build it
+data/*.db
+data/*.db-*
+data/test.db
+# local / secrets
+.env
+node_modules
+.claude
+*.log
+data/sub_apple.json

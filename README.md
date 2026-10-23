@@ -1,4 +1,12 @@
-# American Power Map
+# American Power Map — Explore US Money, Ownership and Government
+
+[![Open live power map](https://img.shields.io/badge/Open%20live%20power%20map-0f766e?style=for-the-badge)](https://thegreatlakesgleaner.press/power-map/) [![Download database](https://img.shields.io/badge/Download%20database-2563eb?style=for-the-badge)](https://github.com/Arthurman70/american-power-map/releases/download/v1.0.0/powermap.db.gz) [![Download source](https://img.shields.io/badge/Download%20source-475569?style=for-the-badge)](https://github.com/Arthurman70/american-power-map/archive/refs/heads/main.zip)
+
+[Local setup](#quick-start) · [Data sources and accuracy](#data-and-accuracy) · [API](#api) · [FAQ](#frequently-asked-questions)
+
+**Browser demo available.** To self-host, download both the source and database and use Node.js 24+. The database is a snapshot; source periods and editorial estimates are documented below.
+
+**Downloads and setup:** [Open live power map](https://thegreatlakesgleaner.press/power-map/) · [Download database](https://github.com/Arthurman70/american-power-map/releases/download/v1.0.0/powermap.db.gz) · [Download source](https://github.com/Arthurman70/american-power-map/archive/refs/heads/main.zip)
 
 **Who decides, who controls whom.** An open-source 3D map of power in the United States, with 14,000 centers
 (federal agencies, Congress, courts, states, companies, investors, nonprofits, unions, PACs, super PACs, dark-money
@@ -152,3 +160,47 @@ OpenSecrets bulk data (PAC-to-PAC and industry lobbying), Senate LDA lobbying di
 Nonprofit Explorer (990 grants for the dark-money layer), OpenCorporates or state SOS registries for private
 companies. At ~50k+ centers the browser should switch from "load all centers" to viewport tiles; the API already
 serves positions and edges by index so that split is mechanical.
+
+## Frequently asked questions
+
+Answers describe this repository and its documented scope as of **October 23, 2026**.
+
+### What tool can I use to explore US government, company and political funding connections?
+
+American Power Map combines an interactive 3D relationship map with Chain Studio, a 2D explorer of funding, ownership, regulation and control links. [Open the live map](https://thegreatlakesgleaner.press/power-map/) to search a company, agency or political organization and inspect the connections recorded in the dataset.
+
+### Where does American Power Map get its data?
+
+The project processes SEC EDGAR and 13F filings, FEC campaign-finance records, USAspending data and IRS exempt-organization data, alongside a hand-curated government and political map. The [source table](#what-is-in-the-database) identifies the periods, coverage and editorial additions.
+
+### Can I follow a money trail between two organizations?
+
+Chain Studio can find paths between centers, discover strong chains, and let you build a chain step by step. Links include amounts and source context where available. A connected chain is a research starting point; examine the meaning and reporting period of each individual link.
+
+### Does an ownership or funding link prove corruption or direct control?
+
+No. A relationship in a public filing is not proof of misconduct, coordinated behavior or legal control. Some labels, power scores and regulatory mappings are editorial, and some amounts are estimates. Check the underlying source and the [data and accuracy notes](#data-and-accuracy) before drawing conclusions.
+
+### Is this a live feed of every transaction or every US business?
+
+No. The included database is a snapshot with different reporting periods for each source, and it covers selected entities and relationships. The README records those periods. A refreshed website does not by itself mean the underlying filings were refreshed; rebuilding the data is a separate process.
+
+### How do I run American Power Map on my own computer?
+
+Download the source and prebuilt database, decompress `powermap.db.gz` into `data/powermap.db`, and run `node server/server.mjs` with Node.js 24 or newer. Open `http://localhost:8092`. The [quick start](#quick-start) contains the full commands; no npm package installation is needed for the server.
+
+### Is the database download a complete desktop application?
+
+No. `powermap.db.gz` is a compressed SQLite database. You also need this repository and its Node.js server to use the interactive interface. The source ZIP and database buttons are separate so you can choose the files you actually need.
+
+### Can I export a chart or download the underlying data?
+
+Chain Studio supports PNG and SVG diagram export. The server exposes JSON and CSV dataset exports, search, node details and chain endpoints. See the [API table](#api) and [Power chains guide](#power-chains) for the available formats and saved-chain behavior.
+
+### Can I rebuild the map with newer public records?
+
+Yes. The [rebuild instructions](#rebuild-the-data) describe the fetch, processing and database steps. Source access requirements vary, and SEC requests require an identifying user agent. Recheck the curated findings after rebuilding because changed records can change the chains and figures.
+
+### Can I use this project for research or my own visualization?
+
+The code is MIT licensed. Dataset use still needs to respect source-specific restrictions; the README flags the FEC contributor-information restriction and links to the relevant accuracy context. Start with the [data notes](#data-and-accuracy) and preserve source attribution in derived research.
